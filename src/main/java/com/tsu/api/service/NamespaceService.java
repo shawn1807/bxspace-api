@@ -1,12 +1,12 @@
 package com.tsu.api.service;
 
-import com.tsu.api.dto.*;
 import com.tsu.enums.BaseParamName;
 import com.tsu.namespace.api.Namespace;
 import com.tsu.namespace.api.NamespaceUser;
 import com.tsu.namespace.api.NamespaceUserType;
 import com.tsu.namespace.api.UserBase;
 import com.tsu.auth.api.AccessLevel;
+import com.tsu.namespace.dto.NamespaceResponse;
 import com.tsu.workspace.request.AddNamespace;
 import com.tsu.workspace.request.UserFilter;
 import com.tsu.namespace.service.AppService;

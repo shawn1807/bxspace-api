@@ -15,6 +15,7 @@
     <properties>
         <java.version>21</java.version>
         <keycloak.version>26.0.6</keycloak.version>
+        <resource.filtering>false</resource.filtering>
     </properties>
     <dependencies>
         <dependency>
@@ -31,6 +32,11 @@
         <dependency>
             <groupId>com.tsu</groupId>
             <artifactId>bx-api</artifactId>
+            <version>${parent.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.tsu</groupId>
+            <artifactId>bx-entry</artifactId>
             <version>${parent.version}</version>
         </dependency>
         <dependency>

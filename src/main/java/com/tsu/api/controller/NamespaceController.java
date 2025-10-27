@@ -1,7 +1,8 @@
 package com.tsu.api.controller;
 
-import com.tsu.api.dto.*;
 import com.tsu.api.service.NamespaceService;
+import com.tsu.common.data.ApiResponseWrapper;
+import com.tsu.namespace.dto.NamespaceResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
