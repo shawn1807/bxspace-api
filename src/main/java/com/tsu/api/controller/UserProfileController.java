@@ -2,8 +2,6 @@ package com.tsu.api.controller;
 
 import com.tsu.common.data.ApiResponseWrapper;
 import com.tsu.namespace.request.UpdateFullUserProfileRequest;
-import com.tsu.namespace.request.UpdateUserProfileRequest;
-import com.tsu.namespace.request.UserProfileSettingsDto;
 import com.tsu.namespace.dto.FullUserProfileResponse;
 import com.tsu.namespace.dto.UserProfileResponse;
 import com.tsu.namespace.service.UserService;
@@ -23,13 +21,13 @@ public class UserProfileController {
 
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     public ApiResponseWrapper<UserProfileResponse> get() {
-        UserProfileResponse response = userService.getUserProfile();
+        UserProfileResponse response = userService.getContextUserInfo();
         return ApiResponseWrapper.success(response, "Profile retrieved successfully");
     }
 
     @PutMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ApiResponseWrapper<UserProfileResponse> update(@Valid @RequestBody UpdateUserProfileRequest request) {
-        UserProfileResponse response = userService.updateUserProfile(request);
+        UserProfileResponse response = userService.updateLoginUserInfo(request);
         return ApiResponseWrapper.success(response, "Profile updated successfully");
     }
 
