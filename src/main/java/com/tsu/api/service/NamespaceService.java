@@ -1,28 +1,29 @@
 package com.tsu.api.service;
 
-import com.tsu.enums.BaseParamName;
-import com.tsu.namespace.api.Namespace;
-import com.tsu.namespace.api.NamespaceUser;
-import com.tsu.namespace.api.NamespaceUserType;
-import com.tsu.namespace.api.UserBase;
+import com.tsu.api.dto.AvailabilityCheckResponse;
+import com.tsu.api.dto.CreateNamespaceRequest;
+import com.tsu.api.dto.UpdateNamespaceRequest;
 import com.tsu.auth.api.AccessLevel;
-import com.tsu.namespace.dto.NamespaceResponse;
-import com.tsu.workspace.request.AddNamespace;
-import com.tsu.workspace.request.UserFilter;
-import com.tsu.namespace.service.AppService;
-import com.tsu.namespace.service.UserService;
-import com.tsu.namespace.val.NamespaceUserMvVal;
-import com.tsu.namespace.val.NamespaceVal;
-import com.tsu.common.val.UserVal;
-import com.tsu.auth.api.BasePrincipal;
+import com.tsu.auth.security.AppSecurityContext;
+import com.tsu.auth.security.AppSecurityContextInitializer;
+import com.tsu.auth.security.NamespaceContext;
 import com.tsu.common.utils.ParamValidator;
+import com.tsu.common.val.UserVal;
 import com.tsu.common.vo.Email;
 import com.tsu.common.vo.Text;
 import com.tsu.entry.api.AclMode;
 import com.tsu.entry.api.EntryBucket;
-import com.tsu.auth.security.AppSecurityContext;
-import com.tsu.auth.security.AppSecurityContextInitializer;
-import com.tsu.auth.security.NamespaceContext;
+import com.tsu.enums.BaseParamName;
+import com.tsu.namespace.api.Namespace;
+import com.tsu.namespace.api.UserBase;
+import com.tsu.namespace.dto.NamespaceDetailDto;
+import com.tsu.namespace.dto.NamespaceDto;
+import com.tsu.namespace.service.AppService;
+import com.tsu.namespace.service.UserService;
+import com.tsu.namespace.val.NamespaceUserMvVal;
+import com.tsu.namespace.val.NamespaceVal;
+import com.tsu.workspace.request.AddNamespace;
+import com.tsu.workspace.request.UserFilter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -46,9 +47,8 @@ public class NamespaceService {
     private final AppService appService;
     private final UserService userService;
     private final SecureRandom secureRandom = new SecureRandom();
-    private final AppBucketProvider bucketProvider;
 
-    public List<NamespaceResponse> findAllNamespaces() {
+    public List<NamespaceDto> findAllNamespaces() {
         AppSecurityContext context = securityContextInitializer.initializeAndVerify();
         // Get namespaces from UserBase context instead of all namespaces
         return appService.findJoinedNamespaces(context.getPrincipal())
@@ -57,7 +57,7 @@ public class NamespaceService {
     }
 
 
-    public Optional<NamespaceDetailResponse> findNamespaceById(String id) {
+    public Optional<NamespaceDetailDto> findNamespaceById(String id) {
         UUID namespaceId = ParamValidator.convertAndCheckUUID(id, BaseParamName.NAMESPACE);
         return appService.findNamespaceContextById(namespaceId)
                 .map(NamespaceContext::getNamespace)
@@ -65,7 +65,7 @@ public class NamespaceService {
     }
 
 
-    public Optional<NamespaceDetailResponse> findNamespaceByUri(String uri) {
+    public Optional<NamespaceDetailDto> findNamespaceByUri(String uri) {
         return appService.findNamespaceContextByUri(Text.of(uri))
                 .map(NamespaceContext::getNamespace)
                 .map(this::toNamespaceDetailResponse);
@@ -102,7 +102,7 @@ public class NamespaceService {
     }
 
     @Transactional
-    public NamespaceDetailResponse createNamespace(CreateNamespaceRequest request) {
+    public NamespaceDetailDto createNamespace(CreateNamespaceRequest request) {
         AppSecurityContext appSecurityContext = securityContextInitializer.initializeAndVerify();
         log.info("Creating namespace: {} with context path: {}",
                 request.getName(), request.getContextPath());
@@ -155,7 +155,7 @@ public class NamespaceService {
 
 
     @Transactional
-    public Optional<NamespaceDetailResponse> updateNamespace(String id, UpdateNamespaceRequest request) {
+    public Optional<NamespaceDetailDto> updateNamespace(String id, UpdateNamespaceRequest request) {
         log.info("Updating namespace: {} with request: {}", id, request);
         UUID namespaceId = ParamValidator.convertAndCheckUUID(id, BaseParamName.NAMESPACE);
 
@@ -181,7 +181,7 @@ public class NamespaceService {
                     return toNamespaceDetailResponse(namespace);
                 });
     }
-    private NamespaceResponse toNamespaceResponse(NamespaceVal val){
+    private NamespaceDto toNamespaceResponse(NamespaceVal val){
         String status = val.active() ? "active" : "inactive";
         log.debug("Converting namespace to response: {}", val);
 
@@ -193,7 +193,7 @@ public class NamespaceService {
 
         // Map access level to visibility
         String visibility = mapAccessLevelToVisibility(val.accessLevel());
-        return NamespaceResponse.builder()
+        return NamespaceDto.builder()
                 .id(val.id().toString())
                 .name(val.name())
                 .displayName(val.name()) // Use name as display name for now
@@ -209,7 +209,7 @@ public class NamespaceService {
                 .build();
     }
 
-    private NamespaceDetailResponse toNamespaceDetailResponse(Namespace namespace) {
+    private NamespaceDetailDto toNamespaceDetailResponse(Namespace namespace) {
         NamespaceVal val = namespace.getValue();
         NamespaceProps props = namespace.getProps(NamespaceProps.class)
                 .orElseGet(()-> NamespaceProps.builder().build());
@@ -226,9 +226,9 @@ public class NamespaceService {
         String visibility = mapAccessLevelToVisibility(val.accessLevel());
 
         // Build default resource quotas
-        NamespaceDetailResponse.ResourceQuotas resourceQuotas = NamespaceDetailResponse.ResourceQuotas.builder()
+        NamespaceDetailDto.ResourceQuotas resourceQuotas = NamespaceDetailDto.ResourceQuotas.builder()
                 .enabled(true)
-                .limits(NamespaceDetailResponse.ResourceQuotas.ResourceLimits.builder()
+                .limits(NamespaceDetailDto.ResourceQuotas.ResourceLimits.builder()
                         .cpu("2")
                         .memory("4Gi")
                         .storage("50Gi")
@@ -246,7 +246,7 @@ public class NamespaceService {
                         });
 
         // Build the response with all available fields
-        return NamespaceDetailResponse.builder()
+        return NamespaceDetailDto.builder()
                 .id(val.id().toString())
                 .name(val.name())
                 .displayName(val.name()) // Use name as display name for now
@@ -301,252 +301,6 @@ public class NamespaceService {
                 .orElseThrow(() -> new IllegalArgumentException("Namespace not found: " + namespaceId));
     }
 
-    /**
-     * Get a specific namespace user by ID.
-     */
-    public Optional<NamespaceUserResponse> getNamespaceUser(String namespaceId, Integer userId) {
-        log.info("Getting namespace user: {} in namespace: {}", userId, namespaceId);
-        UUID nsId = ParamValidator.convertAndCheckUUID(namespaceId, BaseParamName.NAMESPACE);
 
-        return appService.findNamespaceContextById(nsId)
-                .flatMap(context -> {
-                    Namespace namespace = context.getNamespace();
-                    return namespace.findUserById(userId);
-                })
-                .map(this::toNamespaceUserResponse);
-    }
-
-    /**
-     * Add a user to a namespace.
-     */
-    @Transactional
-    public NamespaceUserResponse addNamespaceUser(String namespaceId, CreateNamespaceUserRequest request) {
-        log.info("Adding user to namespace: {} with principal: {}", namespaceId, request.getPrincipalId());
-        UUID nsId = ParamValidator.convertAndCheckUUID(namespaceId, BaseParamName.NAMESPACE);
-        UUID principalId = ParamValidator.convertAndCheckUUID(request.getPrincipalId(), BaseParamName.PRINCIPAL);
-
-        return appService.findNamespaceContextById(nsId)
-                .map(context -> {
-                    Namespace namespace = context.getNamespace();
-
-                    // Find the user by principal ID
-                    UserBase user = userService.findUser(BasePrincipal.of(principalId))
-                            .orElseThrow(() -> new IllegalArgumentException("User not found: " + principalId));
-
-                    // Parse user type
-                    NamespaceUserType userType = NamespaceUserType.valueOf(request.getType().toLowerCase());
-
-                    // Add user to namespace
-                    NamespaceUser namespaceUser = namespace.addUser(user, userType);
-
-                    // Set additional properties if provided
-                    if (request.getActivationDate() != null) {
-                        namespaceUser.activate();
-                    }
-                    if (request.getExpirationDate() != null) {
-                        namespaceUser.expire(request.getExpirationDate());
-                    }
-
-                    log.info("Added user {} to namespace {}", principalId, namespaceId);
-                    return toNamespaceUserResponse(namespaceUser);
-                })
-                .orElseThrow(() -> new IllegalArgumentException("Namespace not found: " + namespaceId));
-    }
-
-    /**
-     * Update a namespace user.
-     */
-    @Transactional
-    public Optional<NamespaceUserResponse> updateNamespaceUser(String namespaceId, Integer userId, UpdateNamespaceUserRequest request) {
-        log.info("Updating namespace user: {} in namespace: {}", userId, namespaceId);
-        UUID nsId = ParamValidator.convertAndCheckUUID(namespaceId, BaseParamName.NAMESPACE);
-
-        return appService.findNamespaceContextById(nsId)
-                .flatMap(context -> {
-                    Namespace namespace = context.getNamespace();
-                    return namespace.findUserById(userId)
-                            .map(namespaceUser -> {
-                                // Update activation status
-                                if (request.getActive() != null) {
-                                    if (request.getActive()) {
-                                        namespaceUser.activate();
-                                    } else {
-                                        namespaceUser.deactivate();
-                                    }
-                                }
-
-                                // Update expiration date
-                                if (request.getExpirationDate() != null) {
-                                    namespaceUser.expire(request.getExpirationDate());
-                                }
-
-                                log.info("Updated namespace user: {}", userId);
-                                return toNamespaceUserResponse(namespaceUser);
-                            });
-                });
-    }
-
-    /**
-     * Delete (deactivate) a namespace user.
-     */
-    @Transactional
-    public boolean deleteNamespaceUser(String namespaceId, Integer userId) {
-        log.info("Deleting namespace user: {} from namespace: {}", userId, namespaceId);
-        UUID nsId = ParamValidator.convertAndCheckUUID(namespaceId, BaseParamName.NAMESPACE);
-
-        return appService.findNamespaceContextById(nsId)
-                .flatMap(context -> {
-                    Namespace namespace = context.getNamespace();
-                    return namespace.findUserById(userId)
-                            .map(namespaceUser -> {
-                                namespaceUser.deactivate();
-                                log.info("Deactivated namespace user: {}", userId);
-                                return true;
-                            });
-                })
-                .orElse(false);
-    }
-
-    // ==================== URI-based Namespace User Methods ====================
-
-    /**
-     * Search/query namespace users by URI using filter criteria and pagination.
-     */
-    public Page<NamespaceUserMvVal> queryNamespaceUsersByUri(String uri, UserFilter filter, Pageable pageable) {
-        log.info("Querying namespace users for namespace URI: {} with filter: {}", uri, filter);
-
-        return appService.findNamespaceContextByUri(Text.of(uri))
-                .map(context -> {
-                    Namespace namespace = context.getNamespace();
-                    UUID nsId = namespace.getId();
-                    filter.setNamespaceId(nsId);
-                    // Query users using the Namespace.queryUsers method
-                    return namespace.queryUsers(filter, pageable);
-                })
-                .orElseThrow(() -> new IllegalArgumentException("Namespace not found: " + uri));
-    }
-
-    /**
-     * Get a specific namespace user by URI and user ID.
-     */
-    public Optional<NamespaceUserResponse> getNamespaceUserByUri(String uri, Integer userId) {
-        log.info("Getting namespace user: {} in namespace URI: {}", userId, uri);
-
-        return appService.findNamespaceContextByUri(Text.of(uri))
-                .flatMap(context -> {
-                    Namespace namespace = context.getNamespace();
-                    return namespace.findUserById(userId);
-                })
-                .map(this::toNamespaceUserResponse);
-    }
-
-    /**
-     * Add a user to a namespace by URI.
-     */
-    @Transactional
-    public NamespaceUserResponse addNamespaceUserByUri(String uri, CreateNamespaceUserRequest request) {
-        log.info("Adding user to namespace URI: {} with principal: {}", uri, request.getPrincipalId());
-        UUID principalId = ParamValidator.convertAndCheckUUID(request.getPrincipalId(), BaseParamName.PRINCIPAL);
-
-        return appService.findNamespaceContextByUri(Text.of(uri))
-                .map(context -> {
-                    Namespace namespace = context.getNamespace();
-
-                    // Find the user by principal ID
-                    UserBase user = userService.findUser(BasePrincipal.of(principalId))
-                            .orElseThrow(() -> new IllegalArgumentException("User not found: " + principalId));
-
-                    // Parse user type
-                    NamespaceUserType userType = NamespaceUserType.valueOf(request.getType().toLowerCase());
-
-                    // Add user to namespace
-                    NamespaceUser namespaceUser = namespace.addUser(user, userType);
-
-                    // Set additional properties if provided
-                    if (request.getActivationDate() != null) {
-                        namespaceUser.activate();
-                    }
-                    if (request.getExpirationDate() != null) {
-                        namespaceUser.expire(request.getExpirationDate());
-                    }
-
-                    log.info("Added user {} to namespace {}", principalId, uri);
-                    return toNamespaceUserResponse(namespaceUser);
-                })
-                .orElseThrow(() -> new IllegalArgumentException("Namespace not found: " + uri));
-    }
-
-    /**
-     * Update a namespace user by URI.
-     */
-    @Transactional
-    public Optional<NamespaceUserResponse> updateNamespaceUserByUri(String uri, Integer userId, UpdateNamespaceUserRequest request) {
-        log.info("Updating namespace user: {} in namespace URI: {}", userId, uri);
-
-        return appService.findNamespaceContextByUri(Text.of(uri))
-                .flatMap(context -> {
-                    Namespace namespace = context.getNamespace();
-                    return namespace.findUserById(userId)
-                            .map(namespaceUser -> {
-                                // Update activation status
-                                if (request.getActive() != null) {
-                                    if (request.getActive()) {
-                                        namespaceUser.activate();
-                                    } else {
-                                        namespaceUser.deactivate();
-                                    }
-                                }
-
-                                // Update expiration date
-                                if (request.getExpirationDate() != null) {
-                                    namespaceUser.expire(request.getExpirationDate());
-                                }
-
-                                log.info("Updated namespace user: {}", userId);
-                                return toNamespaceUserResponse(namespaceUser);
-                            });
-                });
-    }
-
-    /**
-     * Delete (deactivate) a namespace user by URI.
-     */
-    @Transactional
-    public boolean deleteNamespaceUserByUri(String uri, Integer userId) {
-        log.info("Deleting namespace user: {} from namespace URI: {}", userId, uri);
-
-        return appService.findNamespaceContextByUri(Text.of(uri))
-                .flatMap(context -> {
-                    Namespace namespace = context.getNamespace();
-                    return namespace.findUserById(userId)
-                            .map(namespaceUser -> {
-                                namespaceUser.deactivate();
-                                log.info("Deactivated namespace user: {}", userId);
-                                return true;
-                            });
-                })
-                .orElse(false);
-    }
-
-
-
-    /**
-     * Convert NamespaceUser to NamespaceUserResponse.
-     */
-    private NamespaceUserResponse toNamespaceUserResponse(NamespaceUser namespaceUser) {
-        // For direct NamespaceUser objects, we need to query the MV view to get full details
-        // or build a response from the available data
-        return NamespaceUserResponse.builder()
-                .id(namespaceUser.getId())
-                .type(namespaceUser.getType() != null ? namespaceUser.getType().name() : null)
-                .active(namespaceUser.isValid())
-                .displayName(namespaceUser.getUserBase().getValue().displayName())
-                .email(namespaceUser.getUserBase().getValue().email())
-                .firstName(namespaceUser.getUserBase().getValue().firstName())
-                .lastName(namespaceUser.getUserBase().getValue().lastName())
-                .phone(namespaceUser.getUserBase().getValue().phone())
-                .imageUrl(namespaceUser.getUserBase().getValue().imageUrl())
-                .build();
-    }
 
 }

@@ -1,8 +1,12 @@
 package com.tsu.api.controller;
 
+import com.tsu.api.dto.AvailabilityCheckResponse;
+import com.tsu.api.dto.CreateNamespaceRequest;
+import com.tsu.api.dto.UpdateNamespaceRequest;
 import com.tsu.api.service.NamespaceService;
 import com.tsu.common.data.ApiResponseWrapper;
-import com.tsu.namespace.dto.NamespaceResponse;
+import com.tsu.namespace.dto.NamespaceDetailDto;
+import com.tsu.namespace.dto.NamespaceDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -35,10 +39,10 @@ public class NamespaceController {
             @ApiResponse(responseCode = "403", description = "Access denied")
     })
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<ApiResponseWrapper<List<NamespaceResponse>>> getAllNamespaces(
+    public ResponseEntity<ApiResponseWrapper<List<NamespaceDto>>> getAllNamespaces(
             @PageableDefault(size = 20) Pageable pageable) {
         log.info("Getting current user's accessible namespaces with pagination: {}", pageable);
-        List<NamespaceResponse> namespaces = namespaceService.findAllNamespaces();
+        List<NamespaceDto> namespaces = namespaceService.findAllNamespaces();
         return ResponseEntity.ok(ApiResponseWrapper.success(namespaces, "Namespaces retrieved successfully"));
     }
 
@@ -50,7 +54,7 @@ public class NamespaceController {
             @ApiResponse(responseCode = "403", description = "Access denied")
     })
     @GetMapping(value = "/{uri}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<ApiResponseWrapper<NamespaceDetailResponse>> getNamespaceByPath(
+    public ResponseEntity<ApiResponseWrapper<NamespaceDetailDto>> getNamespaceByPath(
             @Parameter(description = "Namespace Uri") @PathVariable String uri) {
         log.info("Getting namespace by uri: {}", uri);
         return namespaceService.findNamespaceByUri(uri)
@@ -88,7 +92,7 @@ public class NamespaceController {
             @ApiResponse(responseCode = "403", description = "Access denied")
     })
     @GetMapping(value = "/uri/{uri}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<ApiResponseWrapper<NamespaceDetailResponse>> getNamespaceByUri(
+    public ResponseEntity<ApiResponseWrapper<NamespaceDetailDto>> getNamespaceByUri(
             @Parameter(description = "Namespace URI") @PathVariable String uri) {
         log.info("Getting namespace by URI: {}", uri);
         return namespaceService.findNamespaceByUri(uri)
@@ -111,13 +115,13 @@ public class NamespaceController {
             @ApiResponse(responseCode = "403", description = "Access denied")
     })
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<ApiResponseWrapper<NamespaceDetailResponse>> createNamespace(
+    public ResponseEntity<ApiResponseWrapper<NamespaceDetailDto>> createNamespace(
             @Parameter(description = "Namespace creation request") @Valid @RequestBody CreateNamespaceRequest request) {
         log.info("Creating namespace: {} with context path: {}",
                 request.getName(), request.getContextPath());
 
         try {
-            NamespaceDetailResponse namespace = namespaceService.createNamespace(request);
+            NamespaceDetailDto namespace = namespaceService.createNamespace(request);
             log.info("Created namespace: {} ({})", namespace.getName(), namespace.getId());
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(ApiResponseWrapper.success(namespace, "Namespace created successfully"));
@@ -138,7 +142,7 @@ public class NamespaceController {
             @ApiResponse(responseCode = "403", description = "Access denied")
     })
     @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<ApiResponseWrapper<NamespaceDetailResponse>> updateNamespace(
+    public ResponseEntity<ApiResponseWrapper<NamespaceDetailDto>> updateNamespace(
             @Parameter(description = "Namespace ID") @PathVariable String id,
             @Parameter(description = "Namespace update request") @Valid @RequestBody UpdateNamespaceRequest request) {
         log.info("Updating namespace: {}", id);
@@ -170,7 +174,7 @@ public class NamespaceController {
             @ApiResponse(responseCode = "403", description = "Access denied")
     })
     @PatchMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<ApiResponseWrapper<NamespaceDetailResponse>> patchNamespace(
+    public ResponseEntity<ApiResponseWrapper<NamespaceDetailDto>> patchNamespace(
             @Parameter(description = "Namespace ID") @PathVariable String id,
             @Parameter(description = "Namespace patch request") @RequestBody UpdateNamespaceRequest request) {
         log.info("Patching namespace: {}", id);

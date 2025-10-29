@@ -34,6 +34,11 @@ steps:
       - '--cpu=${_CPU}'
       - '--max-instances=${_MAX_INSTANCES}'
       - '--min-instances=${_MIN_INSTANCES}'
+      - '--set-env-vars=SPRING_PROFILES_ACTIVE=gcp'
+      - '--set-env-vars=GCP_PROJECT_ID=$PROJECT_ID'
+      - '--set-env-vars=GCS_BUCKET_PREFIX=${_GCS_BUCKET_PREFIX}'
+      - '--set-env-vars=GCS_LOCATION=${_GCS_LOCATION}'
+      - '--set-env-vars=ENVIRONMENT=production'
     id: 'deploy-cloud-run'
 
 # Substitution variables with defaults
@@ -45,6 +50,9 @@ substitutions:
   _CPU: '1'
   _MAX_INSTANCES: '10'
   _MIN_INSTANCES: '0'
+  # GCS Configuration
+  _GCS_BUCKET_PREFIX: 'bxspace-prod'
+  _GCS_LOCATION: 'US'
 
 options:
   logging: CLOUD_LOGGING_ONLY

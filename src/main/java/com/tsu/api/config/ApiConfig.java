@@ -1,64 +1,64 @@
 package com.tsu.api.config;
 
-import com.tsu.api.builder.MoneyContextBuilder;
+import com.google.auth.oauth2.GoogleCredentials;
+import com.google.auth.oauth2.ServiceAccountCredentials;
+import com.google.cloud.storage.Storage;
+import com.google.cloud.storage.StorageOptions;
 import com.tsu.api.controller.NamespaceController;
 import com.tsu.api.controller.UserProfileController;
-import com.tsu.api.dto.KeycloakConfig;
-import com.tsu.api.service.*;
-import com.tsu.api.service.impl.FileSystemBucketProvider;
-import com.tsu.api.utils.KeycloakUtils;
-import com.tsu.namespace.service.UserService;
+import com.tsu.api.service.NamespaceService;
 import com.tsu.auth.api.AuthProvider;
+import com.tsu.auth.keycloak.KeycloakConfig;
+import com.tsu.auth.keycloak.KeycloakUtils;
 import com.tsu.auth.security.AppAuthenticationTokenConverter;
-import com.tsu.namespace.service.LoginService;
 import com.tsu.auth.security.AppSecurityContextInitializer;
-import io.ipgeolocation.sdk.api.IPGeolocationAPI;
-import io.ipgeolocation.sdk.invoker.ApiClient;
-import io.ipgeolocation.sdk.invoker.auth.ApiKeyAuth;
+import com.tsu.auth.keycloak.service.KeycloakAuthService;
+import com.tsu.entry.api.FileStoreProvider;
+import com.tsu.entry.provider.filesystem.FileSystemStoreProvider;
+import com.tsu.entry.provider.google.CloudStorageStoreProvider;
+import com.tsu.namespace.helper.UserDbHelper;
+import com.tsu.namespace.security.AdminContextInitializer;
+import com.tsu.namespace.security.WebRequestContextInitializer;
+import com.tsu.namespace.service.LoginService;
+import com.tsu.namespace.service.UserService;
+import com.tsu.namespace.service.impl.LoginServiceImpl;
 import io.netty.handler.timeout.ReadTimeoutHandler;
 import io.netty.handler.timeout.WriteTimeoutHandler;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.keycloak.admin.client.Keycloak;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.*;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.util.StringUtils;
 import org.springframework.web.context.WebApplicationContext;
-import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import reactor.netty.http.client.HttpClient;
 
 import javax.net.ssl.SSLException;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.nio.file.Paths;
 
 @Slf4j
-@EnableConfigurationProperties(KeycloakConfig.class)
-@ComponentScan(basePackageClasses = {UserProfileController.class, PendingTaskService.class, NamespaceController.class, NamespaceService.class})
-@Import(com.tsu.workspace.config.OAuth2Config.class)
+@EnableConfigurationProperties({KeycloakConfig.class, GcsConfig.class})
+@ComponentScan(basePackageClasses = {UserProfileController.class, NamespaceController.class, NamespaceService.class})
 @Configuration
 public class ApiConfig {
 
 
-    @Value("${ipgeolocation.token:}")
-    private String ipGeoLocationToken;
-
-    @Value("${ipinfo.token:}")
-    private String ipinfoToken;
-
     @Bean
     public KeycloakAuthService keycloakAuthService(KeycloakConfig config,
-                                                    UserService userService,
-                                                    GeolocationService geolocationService) {
+                                                   UserService userService) {
         Keycloak keycloak = Keycloak.getInstance(config.getUrl(), config.getRealm(),
                 config.getUsername(), config.getPassword(), config.getClientId(),
                 config.getSecret(), null);
-        return new KeycloakAuthService(config.getRealm(), keycloak, userService, geolocationService);
+        return new KeycloakAuthService(config.getRealm(), keycloak, userService);
     }
 
     @Bean
@@ -74,28 +74,7 @@ public class ApiConfig {
                 .doOnConnected(conn -> conn
                         .addHandlerLast(new ReadTimeoutHandler(10))
                         .addHandlerLast(new WriteTimeoutHandler(10)));
-        return new KeycloakUtils(config,httpClient);
-    }
-
-
-
-    @Bean
-    public GeolocationService geoLocationService() {
-        HttpClient httpClient = HttpClient.create()
-                .doOnConnected(conn -> conn
-                        .addHandlerLast(new ReadTimeoutHandler(10))
-                        .addHandlerLast(new WriteTimeoutHandler(10)));
-        WebClient webClient = WebClient.builder()
-                .baseUrl("https://api.ipinfo.io/lite")
-                .clientConnector(new ReactorClientHttpConnector(httpClient))
-
-                .build();
-        ApiClient client = io.ipgeolocation.sdk.invoker.Configuration.getDefaultApiClient();
-        client.setBasePath("https://api.ipgeolocation.io/v2");
-        ApiKeyAuth apiKeyAuth = (ApiKeyAuth) client.getAuthentication("ApiKeyAuth");
-        apiKeyAuth.setApiKey(ipGeoLocationToken);
-        IPGeolocationAPI api = new IPGeolocationAPI(client);
-        return new GeolocationService(api, webClient);
+        return new KeycloakUtils(config, httpClient);
     }
 
 
@@ -106,10 +85,6 @@ public class ApiConfig {
         return new WebRequestContextInitializer(request);
     }
 
-    @Bean
-    public MoneyContextBuilder moneyContextBuilder() {
-        return new MoneyContextBuilder();
-    }
 
     @Profile("app-upgrade")
     @Bean
@@ -134,9 +109,34 @@ public class ApiConfig {
 
     @Profile("dev")
     @Bean
-    public AppBucketProvider bucketProvider(){
-        return new FileSystemBucketProvider();
+    public FileStoreProvider bucketProvider() {
+        return new FileSystemStoreProvider("local", "/tmp");
     }
+
+    @Profile({"prod", "gcp"})
+    @Bean
+    public FileStoreProvider googleCloudStorage(GcsConfig config) throws IOException {
+        GoogleCredentials credentials;
+        if (StringUtils.hasText(config.getCredentialsPath())) {
+            // Load credentials from file
+            log.info("Loading GCS credentials from file: {}", config.getCredentialsPath());
+            try (FileInputStream serviceAccountStream = new FileInputStream(
+                    Paths.get(config.getCredentialsPath()).toFile())) {
+                credentials = ServiceAccountCredentials.fromStream(serviceAccountStream);
+            }
+        } else {
+            // Use Application Default Credentials (ADC)
+            log.info("Using Application Default Credentials for GCS");
+            credentials = GoogleCredentials.getApplicationDefault();
+        }
+        Storage storage = StorageOptions.newBuilder()
+                .setProjectId(config.getProjectId())
+                .setCredentials(credentials)
+                .build()
+                .getService();
+        return new CloudStorageStoreProvider(config.getName(), storage);
+    }
+
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, AppAuthenticationTokenConverter converter) throws Exception {
@@ -147,12 +147,12 @@ public class ApiConfig {
                         .permitAll()
                         // Public endpoints (without context path /api since it's the servlet context)
                         .requestMatchers("/login", "/login/**", "/auth/register/**", "/auth/register",
-                                       "/token", "/public/**", "/version",
-                                       "/login/social", "/login/social/**")
+                                "/token", "/public/**", "/version",
+                                "/login/social", "/login/social/**")
                         .permitAll()
                         // API documentation endpoints
                         .requestMatchers("/api-docs/**", "/swagger-ui.html", "/swagger-ui/**",
-                                       "/webjars/**", "/actuator/**")
+                                "/webjars/**", "/actuator/**")
                         .permitAll()
                         // All other requests require authentication
                         .anyRequest().authenticated())

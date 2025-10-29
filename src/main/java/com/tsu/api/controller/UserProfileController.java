@@ -24,7 +24,7 @@ import static com.tsu.enums.BaseExceptionCode.INACTIVE_ACCOUNT;
 public class UserProfileController {
 
     private final UserService userService;
-    private AppSecurityContextInitializer initializer;
+    private final AppSecurityContextInitializer initializer;
 
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     public ApiResponseWrapper<LoginUserInfoDto> get() {
