@@ -1,0 +1,30 @@
+# App Engine configuration (alternative to Cloud Run)
+runtime: java21
+instance_class: F2
+
+# Environment variables
+env_variables:
+  SPRING_PROFILES_ACTIVE: 'prod'
+
+# Automatic scaling configuration
+automatic_scaling:
+  min_instances: 0
+  max_instances: 10
+  target_cpu_utilization: 0.65
+  target_throughput_utilization: 0.6
+
+# Health check configuration
+liveness_check:
+  path: "/actuator/health/liveness"
+  check_interval_sec: 30
+  timeout_sec: 4
+  failure_threshold: 2
+  success_threshold: 1
+
+readiness_check:
+  path: "/actuator/health/readiness"
+  check_interval_sec: 5
+  timeout_sec: 4
+  failure_threshold: 2
+  success_threshold: 1
+  app_start_timeout_sec: 300
