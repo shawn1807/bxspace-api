@@ -1,4 +1,4 @@
-package com.tsu.api.dto;
+package com.tsu.api.http.res;
 
 import lombok.Builder;
 import lombok.Getter;
@@ -7,7 +7,7 @@ import lombok.Getter;
 @Builder
 public class AvailabilityCheckResponse {
 
-    private boolean available;
-    private String suggestion;
+    private boolean avb; //availability
+    private String sug; //sug
 
 }

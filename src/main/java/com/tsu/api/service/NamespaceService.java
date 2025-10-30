@@ -1,7 +1,7 @@
 package com.tsu.api.service;
 
-import com.tsu.api.dto.AvailabilityCheckResponse;
-import com.tsu.api.dto.CreateNamespaceRequest;
+import com.tsu.api.http.res.AvailabilityCheckResponse;
+import com.tsu.api.http.req.CreateNamespaceRequest;
 import com.tsu.api.dto.UpdateNamespaceRequest;
 import com.tsu.auth.api.AccessLevel;
 import com.tsu.auth.security.AppSecurityContext;

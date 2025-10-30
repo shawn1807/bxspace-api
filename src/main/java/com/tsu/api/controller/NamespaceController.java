@@ -1,7 +1,7 @@
 package com.tsu.api.controller;
 
-import com.tsu.api.dto.AvailabilityCheckResponse;
-import com.tsu.api.dto.CreateNamespaceRequest;
+import com.tsu.api.http.res.AvailabilityCheckResponse;
+import com.tsu.api.http.req.CreateNamespaceRequest;
 import com.tsu.api.dto.UpdateNamespaceRequest;
 import com.tsu.api.service.NamespaceService;
 import com.tsu.common.data.ApiResponseWrapper;
