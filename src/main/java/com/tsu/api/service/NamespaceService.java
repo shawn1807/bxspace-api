@@ -3,6 +3,8 @@ package com.tsu.api.service;
 import com.tsu.api.http.res.AvailabilityCheckResponse;
 import com.tsu.api.http.req.CreateNamespaceRequest;
 import com.tsu.api.dto.UpdateNamespaceRequest;
+import com.tsu.api.http.res.NamespaceDetailResponse;
+import com.tsu.api.http.res.NamespaceResponse;
 import com.tsu.auth.api.AccessLevel;
 import com.tsu.auth.security.AppSecurityContext;
 import com.tsu.auth.security.AppSecurityContextInitializer;
@@ -16,8 +18,6 @@ import com.tsu.entry.api.EntryBucket;
 import com.tsu.enums.BaseParamName;
 import com.tsu.namespace.api.Namespace;
 import com.tsu.namespace.api.UserBase;
-import com.tsu.namespace.dto.NamespaceDetailDto;
-import com.tsu.namespace.dto.NamespaceDto;
 import com.tsu.namespace.service.AppService;
 import com.tsu.namespace.service.UserService;
 import com.tsu.namespace.val.NamespaceUserMvVal;
@@ -48,7 +48,7 @@ public class NamespaceService {
     private final UserService userService;
     private final SecureRandom secureRandom = new SecureRandom();
 
-    public List<NamespaceDto> findAllNamespaces() {
+    public List<NamespaceResponse> findAllNamespaces() {
         AppSecurityContext context = securityContextInitializer.initializeAndVerify();
         // Get namespaces from UserBase context instead of all namespaces
         return appService.findJoinedNamespaces(context.getPrincipal())
@@ -181,7 +181,7 @@ public class NamespaceService {
                     return toNamespaceDetailResponse(namespace);
                 });
     }
-    private NamespaceDto toNamespaceResponse(NamespaceVal val){
+    private NamespaceResponse toNamespaceResponse(NamespaceVal val){
         String status = val.active() ? "active" : "inactive";
         log.debug("Converting namespace to response: {}", val);
 
@@ -193,7 +193,7 @@ public class NamespaceService {
 
         // Map access level to visibility
         String visibility = mapAccessLevelToVisibility(val.accessLevel());
-        return NamespaceDto.builder()
+        return NamespaceResponse.builder()
                 .id(val.id().toString())
                 .name(val.name())
                 .displayName(val.name()) // Use name as display name for now
@@ -209,8 +209,7 @@ public class NamespaceService {
                 .build();
     }
 
-    private NamespaceDetailDto toNamespaceDetailResponse(Namespace namespace) {
-        NamespaceVal val = namespace.getValue();
+    private NamespaceDetailResponse toNamespaceDetailResponse(Namespace namespace) {
         NamespaceProps props = namespace.getProps(NamespaceProps.class)
                 .orElseGet(()-> NamespaceProps.builder().build());
         // Map status based on active flag
@@ -225,16 +224,6 @@ public class NamespaceService {
         // Map access level to visibility
         String visibility = mapAccessLevelToVisibility(val.accessLevel());
 
-        // Build default resource quotas
-        NamespaceDetailDto.ResourceQuotas resourceQuotas = NamespaceDetailDto.ResourceQuotas.builder()
-                .enabled(true)
-                .limits(NamespaceDetailDto.ResourceQuotas.ResourceLimits.builder()
-                        .cpu("2")
-                        .memory("4Gi")
-                        .storage("50Gi")
-                        .pods(30)
-                        .build())
-                .build();
 
         ImageInfo image = new ImageInfo();
         image.setUrl(val.backgroundImageUrl());
@@ -246,7 +235,7 @@ public class NamespaceService {
                         });
 
         // Build the response with all available fields
-        return NamespaceDetailDto.builder()
+        return NamespaceDetailResponse.builder()
                 .id(val.id().toString())
                 .name(val.name())
                 .displayName(val.name()) // Use name as display name for now
@@ -287,7 +276,6 @@ public class NamespaceService {
     public Page<NamespaceUserMvVal> queryNamespaceUsers(String namespaceId, UserFilter filter, Pageable pageable) {
         log.info("Querying namespace users for namespace: {} with filter: {}", namespaceId, filter);
         UUID nsId = ParamValidator.convertAndCheckUUID(namespaceId, BaseParamName.NAMESPACE);
-
         return appService.findNamespaceContextById(nsId)
                 .map(context -> {
                     Namespace namespace = context.getNamespace();

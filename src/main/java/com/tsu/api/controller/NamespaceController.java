@@ -5,8 +5,6 @@ import com.tsu.api.http.req.CreateNamespaceRequest;
 import com.tsu.api.dto.UpdateNamespaceRequest;
 import com.tsu.api.service.NamespaceService;
 import com.tsu.common.data.ApiResponseWrapper;
-import com.tsu.namespace.dto.NamespaceDetailDto;
-import com.tsu.namespace.dto.NamespaceDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -39,10 +37,10 @@ public class NamespaceController {
             @ApiResponse(responseCode = "403", description = "Access denied")
     })
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<ApiResponseWrapper<List<NamespaceDto>>> getAllNamespaces(
+    public ResponseEntity<ApiResponseWrapper<List<NamespaceResponse>>> getAllNamespaces(
             @PageableDefault(size = 20) Pageable pageable) {
         log.info("Getting current user's accessible namespaces with pagination: {}", pageable);
-        List<NamespaceDto> namespaces = namespaceService.findAllNamespaces();
+        List<NamespaceResponse> namespaces = namespaceService.findAllNamespaces();
         return ResponseEntity.ok(ApiResponseWrapper.success(namespaces, "Namespaces retrieved successfully"));
     }
 
